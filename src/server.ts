@@ -156,10 +156,10 @@ io.on("connection", (socket: Socket) => {
   // 點歌 (加入歌單)
   socket.on(
     "addToQueue",
-    ({ roomId, song }: { roomId: string; song: PlaylistItem }) => {
+    ({ roomId, item }: { roomId: string; item: PlaylistItem }) => {
       const room = rooms.get(roomId);
       if (room) {
-        room.playlist.push(song);
+        room.playlist.push(item);
 
         // 如果當前是沒有影片，直接播放
         if (room.currentVideoId === "") {
