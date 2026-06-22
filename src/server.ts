@@ -80,80 +80,86 @@ io.on("connection", (socket: Socket) => {
   );
 
   // 從大廳搜尋歌曲開房
-  socket.on("enterPartyWithSong", ({ roomId, song }) => {
-    // 1. 如果房間還不存在，先初始化
-    if (!rooms.has(roomId)) {
-      rooms.set(roomId, {
-        roomId,
-        currentVideoIndex: 0,
-        currentVideoId: "",
-        isPlaying: false,
-        playbackTimestamp: 0,
-        lastUpdatedAt: Date.now(),
-        playlist: [],
-        members: [],
-        messages: [],
-      });
-    }
-
-    // 2. 使用 .get() 把房間狀態拿出來
-    const room = rooms.get(roomId);
-
-    // TypeScript 的安全檢查：確保 room 有拿到東西才操作
-    if (room) {
-      room.playlist.push(song);
-
-      // 如果房間原本沒有在播歌，就自動把歌單的第一首歌拿來播
-      if (!room.currentVideoId && song) {
-        room.currentVideoId = song.videoId;
+  socket.on(
+    "enterPartyWithSong",
+    ({ roomId, song }: { roomId: string; song: PlaylistItem }) => {
+      // 1. 如果房間還不存在，先初始化
+      if (!rooms.has(roomId)) {
+        rooms.set(roomId, {
+          roomId,
+          currentVideoIndex: 0,
+          currentVideoId: "",
+          isPlaying: false,
+          playbackTimestamp: 0,
+          lastUpdatedAt: Date.now(),
+          playlist: [],
+          members: [],
+          messages: [],
+        });
       }
 
-      // 廣播給房間內所有人：房間狀態更新了！
-      io.to(roomId).emit("roomDataSync", room);
-    }
-  });
+      // 2. 使用 .get() 把房間狀態拿出來
+      const room = rooms.get(roomId);
+
+      // TypeScript 的安全檢查：確保 room 有拿到東西才操作
+      if (room) {
+        room.playlist.push(song);
+
+        // 如果房間原本沒有在播歌，就自動把歌單的第一首歌拿來播
+        if (!room.currentVideoId && song) {
+          room.currentVideoId = song.videoId;
+        }
+
+        // 廣播給房間內所有人：房間狀態更新了！
+        io.to(roomId).emit("roomDataSync", room);
+      }
+    },
+  );
 
   // 從收藏歌單開房
-  socket.on("enterPartyWithPlaylist", ({ roomId, songs }) => {
-    // 1. 如果房間還不存在，先初始化
-    if (!rooms.has(roomId)) {
-      rooms.set(roomId, {
-        roomId,
-        currentVideoIndex: 0,
-        currentVideoId: "",
-        isPlaying: false,
-        playbackTimestamp: 0,
-        lastUpdatedAt: Date.now(),
-        playlist: [],
-        members: [],
-        messages: [],
-      });
-    }
-
-    // 2. 使用 .get() 把房間狀態拿出來
-    const currentRoom = rooms.get(roomId);
-
-    // TypeScript 的安全檢查：確保 currentRoom 有拿到東西才操作
-    if (currentRoom) {
-      currentRoom.playlist = [...currentRoom.playlist, ...songs];
-
-      // 如果房間原本沒有在播歌，就自動把歌單的第一首歌拿來播
-      if (!currentRoom.currentVideoId && songs.length > 0) {
-        currentRoom.currentVideoId = songs[0].videoId;
+  socket.on(
+    "enterPartyWithPlaylist",
+    ({ roomId, songs }: { roomId: string; songs: PlaylistItem[] }) => {
+      // 1. 如果房間還不存在，先初始化
+      if (!rooms.has(roomId)) {
+        rooms.set(roomId, {
+          roomId,
+          currentVideoIndex: 0,
+          currentVideoId: "",
+          isPlaying: false,
+          playbackTimestamp: 0,
+          lastUpdatedAt: Date.now(),
+          playlist: [],
+          members: [],
+          messages: [],
+        });
       }
 
-      // 廣播給房間內所有人：房間狀態更新了！
-      io.to(roomId).emit("roomDataSync", currentRoom);
-    }
-  });
+      // 2. 使用 .get() 把房間狀態拿出來
+      const currentRoom = rooms.get(roomId);
+
+      // TypeScript 的安全檢查：確保 currentRoom 有拿到東西才操作
+      if (currentRoom) {
+        currentRoom.playlist = [...currentRoom.playlist, ...songs];
+
+        // 如果房間原本沒有在播歌，就自動把歌單的第一首歌拿來播
+        if (!currentRoom.currentVideoId && songs.length > 0) {
+          currentRoom.currentVideoId = songs[0]?.videoId ?? "";
+        }
+
+        // 廣播給房間內所有人：房間狀態更新了！
+        io.to(roomId).emit("roomDataSync", currentRoom);
+      }
+    },
+  );
 
   // 點歌 (加入歌單)
   socket.on(
     "addToQueue",
-    ({ roomId, item }: { roomId: string; item: PlaylistItem }) => {
+    ({ roomId, song }: { roomId: string; song: PlaylistItem }) => {
       const room = rooms.get(roomId);
       if (room) {
-        room.playlist.push(item);
+        room.playlist.push(song);
 
         // 如果當前是沒有影片，直接播放
         if (room.currentVideoId === "") {
@@ -228,23 +234,26 @@ io.on("connection", (socket: Socket) => {
     }
   });
   // 換歌
-  socket.on("playSpecific", ({ roomId, index }) => {
-    const room = rooms.get(roomId);
-    if (room && room.playlist[index]) {
-      // 更新索引與狀態
-      room.currentVideoIndex = index;
-      room.currentVideoId = room.playlist[index].videoId;
-      room.isPlaying = true;
-      room.playbackTimestamp = 0;
-      room.lastUpdatedAt = Date.now();
+  socket.on(
+    "playSpecific",
+    ({ roomId, index }: { roomId: string; index: number }) => {
+      const room = rooms.get(roomId);
+      if (room && room.playlist[index]) {
+        // 更新索引與狀態
+        room.currentVideoIndex = index;
+        room.currentVideoId = room.playlist[index].videoId;
+        room.isPlaying = true;
+        room.playbackTimestamp = 0;
+        room.lastUpdatedAt = Date.now();
 
-      // 廣播給所有人同步跳轉
-      io.in(roomId).emit("videoChanged", room);
-    }
-  });
+        // 廣播給所有人同步跳轉
+        io.in(roomId).emit("videoChanged", room);
+      }
+    },
+  );
 
   // 拿取訊息
-  socket.on("getMessages", (roomId) => {
+  socket.on("getMessages", (roomId: string) => {
     const room = rooms.get(roomId);
     if (room && room.messages) {
       socket.emit("historyMessages", room.messages);
@@ -292,7 +301,7 @@ io.on("connection", (socket: Socket) => {
   );
 
   // 離開
-  socket.on("exitParty", ({ roomId }) => {
+  socket.on("exitParty", ({ roomId }: { roomId: string }) => {
     // 讓這個 socket 退出該房間群組
     socket.leave(roomId);
     console.log(`🏃 使用者 ${socket.id} 離開了房間: ${roomId}`);
