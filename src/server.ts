@@ -2,8 +2,8 @@ import express from "express";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 import cors from "cors";
-import { rooms } from "./types";
-import type { RoomMember, RoomData, PlaylistItem } from "./types";
+import { rooms } from "./types.js";
+import type { RoomMember, RoomData, PlaylistItem } from "./types.js";
 
 const app = express();
 app.use(cors());
